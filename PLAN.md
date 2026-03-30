@@ -1,24 +1,25 @@
 # Arcade Launcher — Build Plan
 
-A fullscreen arcade cabinet frontend for student-created games, built with Electrobun
-(Bun + Vite + native webview) targeting Windows.
+A fullscreen arcade cabinet frontend for student-created games, built with Tauri v2
+(Rust + Vite + native webview) targeting Windows.
 
 ---
 
 ## Current State
 
-Initialized from the `vanilla-vite` Electrobun template. The project builds and runs.
+Initialized from the Tauri v2 + SolidJS starter template. The project builds and runs.
 Nothing arcade-specific has been written yet.
 
 ```
 src/
-├── bun/index.ts          — opens a vanilla window, no RPC
-└── mainview/
-    ├── index.html        — plain HTML shell
-    ├── main.ts           — counter demo, delete everything
-    └── style.css         — generic styles, replace entirely
-electrobun.config.ts      — app name is still "vanilla-vite", fix this
-vite.config.ts            — fine as-is (root: src/mainview, out: dist/)
+├── App.tsx               — boilerplate greet demo, delete everything
+├── App.css               — boilerplate styles, replace entirely
+└── index.tsx             — SolidJS root mount, fine as-is
+src-tauri/src/
+├── lib.rs                — boilerplate greet command, replace entirely
+└── main.rs               — binary entry point, fine as-is
+src-tauri/tauri.conf.json — identifier already correct; window config needs updating
+vite.config.ts            — fine as-is (port 1420, ignores src-tauri/)
 ```
 
 ---
@@ -29,18 +30,18 @@ vite.config.ts            — fine as-is (root: src/mainview, out: dist/)
 Instructor edits Google Sheet
         │
         ▼
-bun/index.ts  ──fetch CSV──►  parse GameEntry[]  ──write──►  games-cache.json
+lib.rs  ──fetch CSV──►  parse GameEntry[]  ──write──►  games-cache.json
         │                                                           │
-        │  RPC                                               read on offline
+        │  invoke()                                          read on offline
         ▼
-mainview/main.ts  ──renders──►  game grid  ──select──►  detail screen
+src/stores/  ──renders──►  game grid  ──select──►  detail screen
         │
-        │  RPC: launchGame / launchMame
+        │  invoke: launch_game / launch_mame
         ▼
-bun/index.ts  ──Bun.spawn()──►  game.exe / mame64.exe
-                                      │
-                              hide launcher window
-                              restore on process exit
+lib.rs  ──std::process::Command──►  game.exe / mame64.exe
+                                          │
+                                  hide launcher window
+                                  restore on process exit
 ```
 
 ---
@@ -98,24 +99,25 @@ All runtime data lives in `%APPDATA%\arcade-launcher\`.
 
 ---
 
-## RPC Contract
+## IPC Contract
 
-Defined in `src/shared/types.ts` and consumed by both sides.
+Defined in `src/shared/types.ts` (renderer-only TS types). Rust command signatures
+live in `src-tauri/src/lib.rs` and are registered via `tauri::generate_handler![]`.
 
-**Renderer → Bun (requests):**
+**Renderer → Rust (via `invoke()`):**
 
-| Method         | Params                             | Response                                       |
-| -------------- | ---------------------------------- | ---------------------------------------------- |
-| `fetchGames`   | —                                  | `{ games: GameEntry[], fromCache: boolean }`   |
-| `downloadGame` | `{ gameId, driveFileId, version }` | `{ success, localPath?, error? }`              |
-| `checkUpdates` | —                                  | `{ needsUpdate: string[] }` (array of gameIds) |
-| `launchGame`   | `{ gameId }`                       | `{ success, error? }`                          |
-| `launchMame`   | —                                  | `{ success, error? }`                          |
-| `getConfig`    | —                                  | `AppConfig`                                    |
+| Command          | Params                             | Response                                       |
+| ---------------- | ---------------------------------- | ---------------------------------------------- |
+| `fetch_games`    | —                                  | `{ games: GameEntry[], fromCache: boolean }`   |
+| `download_game`  | `{ gameId, driveFileId, version }` | `{ success, localPath?, error? }`              |
+| `check_updates`  | —                                  | `{ needsUpdate: string[] }` (array of gameIds) |
+| `launch_game`    | `{ gameId }`                       | `{ success, error? }`                          |
+| `launch_mame`    | —                                  | `{ success, error? }`                          |
+| `get_config`     | —                                  | `AppConfig`                                    |
 
-**Bun → Renderer (fire-and-forget messages):**
+**Rust → Renderer (via `app_handle.emit()` / `listen()`):**
 
-| Message            | Payload                                                        |
+| Event              | Payload                                                        |
 | ------------------ | -------------------------------------------------------------- |
 | `downloadProgress` | `{ gameId, bytesReceived, totalBytes, percent, done, error? }` |
 | `gameExited`       | `{ gameId }`                                                   |
@@ -154,9 +156,9 @@ Sequence tracked in the renderer against both keyboard and gamepad input:
 Buffer resets after 10 seconds of inactivity. On match:
 
 1. Play screen-flash + glitch animation in the renderer.
-2. Send `launchMame` RPC.
-3. Bun hides the launcher window and spawns MAME.
-4. On MAME exit, bun sends `mameExited` message and restores the window.
+2. Send `launch_mame` invoke.
+3. Rust hides the launcher window and spawns MAME.
+4. On MAME exit, Rust emits `mameExited` event and restores the window.
 
 ---
 
@@ -164,29 +166,30 @@ Buffer resets after 10 seconds of inactivity. On match:
 
 ### Phase 1 — Project cleanup
 
-- [ ] Fix `electrobun.config.ts`: app name `arcade-launcher`, identifier `nyc.steamcenter.arcade-launcher`
-- [ ] Delete the counter demo from `main.ts` and `style.css`
-- [ ] Add `src/shared/types.ts` with `GameEntry`, `AppConfig`, `DownloadProgress`, and the full `ArcadeRPCType` schema
+- [x] Set app identifier to `nyc.steamcenter.arcade-launcher` in `tauri.conf.json`
+- [ ] Configure window in `tauri.conf.json`: `fullscreen: true`, `decorations: false`, `width: 1920`, `height: 1080`
+- [ ] Delete boilerplate greet command from `lib.rs` and remove `App.tsx` / `App.css` demo
+- [ ] Add `src/shared/types.ts` with `GameEntry`, `AppConfig`, `DownloadProgress` TS types
 
-### Phase 2 — Bun main process
+### Phase 2 — Rust backend (Tauri commands)
 
-- [ ] On startup: read `config.json` from `%APPDATA%\arcade-launcher\`; create with defaults if missing
-- [ ] `fetchGames`: fetch CSV from `sheetCsvUrl`, parse rows into `GameEntry[]`, write to `games-cache.json`; return cached data if fetch fails
-- [ ] `checkUpdates`: diff sheet versions against `games-cache.json` manifest, return stale game IDs
-- [ ] `downloadGame`: stream Drive file to disk via bun `fetch`; handle virus-scan redirect; unzip if `.zip`; emit `downloadProgress` messages; update manifest
-- [ ] `launchGame`: resolve local exe path from manifest; `Bun.spawn()` the process; call `win.minimize()` (or hide); watch for exit → restore window + send `gameExited`
-- [ ] `launchMame`: `Bun.spawn(mamePath, mameArgs)`; same hide/restore + `mameExited`
-- [ ] Wire all handlers into `BrowserView.defineRPC` and pass to `BrowserWindow`
-- [ ] Set window to `titleBarStyle: "hidden"`, `frame: { width: 1920, height: 1080, x: 0, y: 0 }`, call `win.setFullScreen(true)`
+- [ ] On startup: read `config.json` from `app_data_dir()`; create with defaults if missing
+- [ ] `fetch_games`: fetch CSV from `sheetCsvUrl` via `reqwest`, parse rows into `GameEntry[]`, write to `games-cache.json`; return cached data if fetch fails
+- [ ] `check_updates`: diff sheet versions against `games-cache.json` manifest, return stale game IDs
+- [ ] `download_game`: stream Drive file to disk via `reqwest`; handle virus-scan redirect; unzip if `.zip`; emit `downloadProgress` events; update manifest
+- [ ] `launch_game`: resolve local exe path from manifest; `std::process::Command` spawn; call `window.hide()`; watch for exit → restore window + emit `gameExited`
+- [ ] `launch_mame`: `std::process::Command` with `mamePath`/`mameArgs`; same hide/restore + emit `mameExited`
+- [ ] Register all commands with `tauri::generate_handler![]`
+- [ ] Add `reqwest` (with `blocking` or async) and `zip` crates to `Cargo.toml`
 
 ### Phase 3 — Renderer UI
 
-- [ ] Initialize `Electroview` with RPC in `main.ts`
-- [ ] On load: call `fetchGames` → render grid; call `checkUpdates` → silently queue downloads in background
+- [ ] Replace `App.tsx` with arcade shell; import `invoke` from `@tauri-apps/api/core` and `listen` from `@tauri-apps/api/event` in stores
+- [ ] On load: call `fetch_games` → render grid; call `check_updates` → silently queue downloads in background
 - [ ] **Grid screen**: scrollable tile grid — thumbnail, title, author. Max visible tiles determined by viewport; rest scroll.
 - [ ] **Detail screen**: full cover art (Drive thumbnail), title, author, description, "PRESS START" prompt; slide in over the grid
-- [ ] **Download progress overlay**: progress bar anchored to tile; listens for `downloadProgress` messages; auto-dismisses on `done: true`
-- [ ] **Offline/error state**: if `fetchGames` returns `fromCache: true`, show a small "OFFLINE" badge; if no cache exists at all, show a full-screen error
+- [ ] **Download progress overlay**: progress bar anchored to tile; listens for `downloadProgress` events; auto-dismisses on `done: true`
+- [ ] **Offline/error state**: if `fetch_games` returns `fromCache: true`, show a small "OFFLINE" badge; if no cache exists at all, show a full-screen error
 
 ### Phase 4 — Gamepad navigation
 
@@ -201,12 +204,12 @@ Buffer resets after 10 seconds of inactivity. On match:
 
 - [ ] Input sequence buffer; append gamepad and keyboard inputs to the same buffer; reset on 10s timeout
 - [ ] Detect `↑↑↓↓←→←→BA` sequence
-- [ ] Trigger flash animation, call `launchMame` RPC
-- [ ] Handle `mameExited` message: restore launcher, play "welcome back" animation
+- [ ] Trigger flash animation, call `invoke('launch_mame')`
+- [ ] Handle `mameExited` event: restore launcher, play "welcome back" animation
 
 ### Phase 6 — Retro visual design
 
-- [ ] Replace system font with `Press Start 2P` (bundle locally under `src/mainview/fonts/`)
+- [ ] Replace system font with `Press Start 2P` (bundle locally under `src/fonts/`)
 - [ ] Color palette: `#0a0a0a` background, `#ff2d78` primary accent, `#00e5ff` secondary, `#f5ff00` highlight
 - [ ] CRT scanline overlay: full-viewport `::after` pseudo-element, `pointer-events: none`, horizontal repeating gradient, ~3% opacity
 - [ ] Scanline flicker: `@keyframes` brightness oscillation, 8s loop, subtle

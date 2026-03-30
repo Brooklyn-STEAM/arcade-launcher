@@ -1,8 +1,8 @@
 # Arcade Launcher
 
 A fullscreen arcade cabinet frontend for student-created games. Targets Windows,
-runs in a custom arcade cabinet at a school. Built with Electrobun (Bun + native
-webview), SolidJS, and Vite.
+runs in a custom arcade cabinet at a school. Built with Tauri v2 (Rust backend +
+native webview), SolidJS, and Vite.
 
 ---
 
@@ -10,60 +10,68 @@ webview), SolidJS, and Vite.
 
 ```
 arcade-launcher/
-├── electrobun.config.ts   — app name, identifier, Vite dist copy rules
-├── vite.config.ts         — Vite root: src/mainview, out: dist/, solid plugin
+├── src-tauri/             — Rust/Tauri backend
+│   ├── tauri.conf.json    — app name, identifier, window config, build commands
+│   ├── Cargo.toml         — Rust dependencies
+│   ├── capabilities/
+│   │   └── default.json   — Tauri capability grants for the main window
+│   └── src/
+│       ├── main.rs        — binary entry point, calls lib::run()
+│       └── lib.rs         — Tauri commands, event emitters, process spawning
+├── src/                   — renderer (SolidJS app, built by Vite)
+│   ├── index.tsx          — SolidJS root mount
+│   ├── shared/
+│   │   └── types.ts       — GameEntry, AppConfig, DownloadProgress (TS types)
+│   ├── style.css          — global styles, CRT aesthetic, CSS custom properties
+│   ├── components/        — SolidJS components (GameGrid, GameDetail, etc.)
+│   ├── stores/            — SolidJS stores and signals shared across components
+│   └── fonts/             — bundled Press Start 2P font files
+├── index.html             — Vite HTML entry point
+├── vite.config.ts         — solid plugin, port 1420, ignores src-tauri/
 ├── tsconfig.json          — strict TS, jsxImportSource: solid-js
 ├── package.json
 ├── PLAN.md                — implementation roadmap and phase checklist
-├── AGENTS.md              — this file
-└── src/
-    ├── shared/
-    │   └── types.ts       — GameEntry, AppConfig, DownloadProgress, ArcadeRPCType
-    ├── bun/
-    │   └── index.ts       — main process: BrowserWindow, RPC handlers, Bun.spawn
-    └── mainview/          — renderer (SolidJS app, built by Vite)
-        ├── index.html
-        ├── main.tsx       — SolidJS root mount, Electroview RPC init
-        ├── style.css      — global styles, CRT aesthetic, CSS custom properties
-        ├── components/    — SolidJS components (GameGrid, GameDetail, etc.)
-        ├── stores/        — SolidJS stores and signals shared across components
-        └── fonts/         — bundled Press Start 2P font files
+└── AGENTS.md              — this file
 ```
 
 ---
 
 ## Commands
 
-| Command                | What it does                                           |
-| ---------------------- | ------------------------------------------------------ |
-| `bun run start`        | Vite build then launch app via Electrobun (no HMR)     |
-| `bun run dev:hmr`      | Vite dev server + Electrobun in parallel (HMR enabled) |
-| `bun run build:canary` | Production build via Electrobun                        |
+| Command            | What it does                                           |
+| ------------------ | ------------------------------------------------------ |
+| `vp run tauri dev`   | Vite dev server + Tauri app shell in parallel (HMR)    |
+| `vp run tauri build` | Vite production build then Rust compile + installer    |
+| `vp dev`           | Vite dev server only (renderer, no Tauri shell)        |
+| `vp build`         | Vite production build only                             |
+| `vp check`         | Format, lint, and TypeScript type checks               |
 
 ---
 
 ## Architecture
 
-Electrobun runs two isolated processes:
+Tauri runs two isolated processes:
 
-**Bun process** (`src/bun/index.ts`) — the main process. Has full system access.
-Creates the `BrowserWindow`, owns all RPC handlers, spawns game/MAME subprocesses
-via `Bun.spawn()`, reads/writes files, and makes all network requests. Never
-touches the DOM.
+**Rust process** (`src-tauri/src/lib.rs`) — the backend. Has full system access.
+Owns all Tauri command handlers, spawns game/MAME subprocesses via
+`std::process::Command`, reads/writes files, and makes all network requests via
+`reqwest`. Emits events to the renderer. Never touches the DOM.
 
-**Renderer** (`src/mainview/`) — a webview running the SolidJS app, built by Vite.
-Has no filesystem or system access. All communication with the bun process goes
-through typed RPC. The renderer calls bun for data and actions; bun pushes events
-back as fire-and-forget messages.
+**Renderer** (`src/`) — a webview running the SolidJS app, built by Vite. Has no
+filesystem or system access. All communication with the Rust process goes through
+Tauri's IPC. The renderer calls Rust commands via `invoke()` and listens for
+fire-and-forget events via `listen()`.
 
-**RPC bridge** — types are defined once in `src/shared/types.ts` as `ArcadeRPCType`.
-The bun side wires handlers via `BrowserView.defineRPC<ArcadeRPCType>()` and passes
-the result to `BrowserWindow`. The renderer initialises with `Electroview.defineRPC<ArcadeRPCType>()`
-inside `main.tsx` and exports the `rpc` object for use in stores and components.
+**IPC bridge** — Rust commands are registered with `tauri::generate_handler![]` and
+decorated with `#[tauri::command]`. The renderer uses `invoke('commandName', args)`
+from `@tauri-apps/api/core` to call them. Rust emits events with
+`app_handle.emit('eventName', payload)`; the renderer subscribes with `listen()`
+from `@tauri-apps/api/event`.
 
-```
-src/shared/types.ts  ←  imported by both sides, never contains runtime code
-```
+
+
+
+
 
 ---
 
@@ -71,10 +79,10 @@ src/shared/types.ts  ←  imported by both sides, never contains runtime code
 
 - **Framework**: SolidJS. Use signals and stores for state, not refs or classes.
 - **JSX**: `.tsx` files. `jsxImportSource` is `solid-js` — no React imports.
-- **Components**: one component per file in `src/mainview/components/`.
-- **Global state**: SolidJS stores in `src/mainview/stores/`. The RPC instance and
-  game list live here; components read from stores, not directly from RPC calls.
-- **Styles**: global CSS in `style.css` using CSS custom properties for theming.
+- **Components**: one component per file in `src/components/`.
+- **Global state**: SolidJS stores in `src/stores/`. Invoke results and game list
+  live here; components read from stores, not directly from `invoke()` calls.
+- **Styles**: global CSS in `src/style.css` using CSS custom properties for theming.
   Component-scoped styles co-located as `ComponentName.css` if needed.
 - **No side effects in component bodies** outside `createEffect` / `onMount`.
 
@@ -82,21 +90,22 @@ src/shared/types.ts  ←  imported by both sides, never contains runtime code
 
 ## Key Constraints
 
-- **Windows only.** All paths use `%APPDATA%` via `process.env.APPDATA` in the bun
-  process. No macOS/Linux path assumptions.
-- **Fullscreen, no titlebar.** The window is `titleBarStyle: "hidden"` and calls
-  `win.setFullScreen(true)` on startup. The renderer fills 100vw × 100vh with no
-  scrollbars.
-- **All system calls go through the bun process.** The renderer must never attempt
-  to read files, spawn processes, or make cross-origin requests. Use RPC.
+- **Windows only.** The Rust process resolves `%APPDATA%` via Tauri's
+  `app.path().app_data_dir()`. No macOS/Linux path assumptions.
+- **Fullscreen, no titlebar.** `tauri.conf.json` sets `fullscreen: true` and
+  `decorations: false` on the main window. The renderer fills 100vw × 100vh with
+  no scrollbars.
+- **All system calls go through the Rust process.** The renderer must never attempt
+  to read files, spawn processes, or make cross-origin requests. Use `invoke()`.
 - **Gamepad API polling, not events.** Input is read each frame in a
   `requestAnimationFrame` loop via `navigator.getGamepads()`. The Gamepad API does
   not reliably fire events in all webview environments.
 - **Google Sheet as CSV, no API key.** The sheet is published via
-  _File → Share → Publish to web → CSV_. The bun process fetches the raw CSV URL.
-- **Google Drive downloads go through the bun process.** Drive direct-download URLs
+  _File → Share → Publish to web → CSV_. The Rust process fetches the raw CSV URL
+  using `reqwest`.
+- **Google Drive downloads go through the Rust process.** Drive direct-download URLs
   require handling a virus-scan redirect for large files; the renderer only receives
-  progress messages.
+  progress events via `listen()`.
 - **Runtime data in `%APPDATA%\arcade-launcher\`.** Config, cache, and downloaded
   game files all live here. See `PLAN.md` for the full layout.
 
