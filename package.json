@@ -1,7 +1,7 @@
 {
-  "name": "electrobun-vanilla-vite",
+  "name": "arcade-launcher",
   "version": "1.0.0",
-  "description": "Electrobun app with vanilla TypeScript and Vite HMR",
+  "description": "Fullscreen arcade cabinet frontend for student-created games",
   "type": "module",
   "scripts": {
     "start": "vite build && electrobun dev",
@@ -15,14 +15,18 @@
     "lint:fix": "oxlint --fix"
   },
   "dependencies": {
-    "electrobun": "1.16.0"
+    "electrobun": "1.16.0",
+    "solid-js": "^1.9.12"
   },
   "devDependencies": {
     "@types/bun": "latest",
     "concurrently": "^9.1.0",
+    "eslint-plugin-solid": "^0.14.5",
     "oxfmt": "^0.42.0",
     "oxlint": "^1.57.0",
+    "oxlint-tsgolint": "^0.18.1",
     "typescript": "^5.7.2",
-    "vite": "^6.0.3"
+    "vite": "^6.0.3",
+    "vite-plugin-solid": "^2.11.11"
   }
 }

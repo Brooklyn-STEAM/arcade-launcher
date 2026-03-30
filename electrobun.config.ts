@@ -2,8 +2,8 @@ import type { ElectrobunConfig } from 'electrobun'
 
 export default {
   app: {
-    name: 'vanilla-vite',
-    identifier: 'vanillavite.electrobun.dev',
+    name: 'arcade-launcher',
+    identifier: 'nyc.steamcenter.arcade-launcher',
     version: '0.0.1',
   },
   build: {

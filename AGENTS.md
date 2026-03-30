@@ -34,11 +34,11 @@ arcade-launcher/
 
 ## Commands
 
-| Command                  | What it does                                              |
-|--------------------------|-----------------------------------------------------------|
-| `bun run start`          | Vite build then launch app via Electrobun (no HMR)        |
-| `bun run dev:hmr`        | Vite dev server + Electrobun in parallel (HMR enabled)    |
-| `bun run build:canary`   | Production build via Electrobun                           |
+| Command                | What it does                                           |
+| ---------------------- | ------------------------------------------------------ |
+| `bun run start`        | Vite build then launch app via Electrobun (no HMR)     |
+| `bun run dev:hmr`      | Vite dev server + Electrobun in parallel (HMR enabled) |
+| `bun run build:canary` | Production build via Electrobun                        |
 
 ---
 

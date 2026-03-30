@@ -20,7 +20,7 @@ async function getMainViewUrl(): Promise<string> {
 const url = await getMainViewUrl()
 
 const _mainWindow = new BrowserWindow({
-  title: 'Vanilla + Vite',
+  title: 'Arcade Launcher',
   url,
   frame: {
     width: 900,
@@ -30,4 +30,4 @@ const _mainWindow = new BrowserWindow({
   },
 })
 
-console.log('Vanilla Vite app started!')
+console.log('Arcade Launcher started!')
