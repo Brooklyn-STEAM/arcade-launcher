@@ -260,17 +260,11 @@ function App() {
 
       <Show when={updateInfo() !== null}>
         <div class="update-banner">
-          <span class="update-text">
-            Update available: v{updateInfo()!.version}
-          </span>
+          <span class="update-text">Update available: v{updateInfo()!.version}</span>
           <Show when={installError()}>
             <span class="update-error">{installError()}</span>
           </Show>
-          <button
-            class="update-btn"
-            disabled={installing()}
-            onClick={() => void installUpdate()}
-          >
+          <button class="update-btn" disabled={installing()} onClick={() => void installUpdate()}>
             {installing() ? 'Installing...' : 'Install & Restart'}
           </button>
           <button class="update-dismiss" onClick={() => dismissUpdate()}>

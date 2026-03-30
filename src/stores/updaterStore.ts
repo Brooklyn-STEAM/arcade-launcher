@@ -47,4 +47,12 @@ function useUpdater() {
   return { updateInfo, installing, installError, installUpdate, dismissUpdate }
 }
 
-export { updateInfo, installing, installError, checkForUpdate, installUpdate, dismissUpdate, useUpdater }
+export {
+  updateInfo,
+  installing,
+  installError,
+  checkForUpdate,
+  installUpdate,
+  dismissUpdate,
+  useUpdater,
+}
