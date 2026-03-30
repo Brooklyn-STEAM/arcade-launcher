@@ -30,6 +30,15 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDgxNEVDOTZEODVERTRENzcKUldSM1RkNkZiY2xPZ2ZtMDBlTVRxQnUraXJDa3hOY285SUtuZHRvTHFQU0FoS0tWUk9jZ0p0Qm0K",
+      "endpoints": [
+        "https://github.com/Brooklyn-STEAM/arcade-launcher/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

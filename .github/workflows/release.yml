@@ -56,20 +56,32 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build Tauri app
-        run: pnpm exec vp run tauri build
+      - name: Set version to short SHA
+        shell: bash
+        run: |
+          SHORT_SHA="${{ github.sha }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
+          node -e "
+            const fs = require('fs');
+            const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
+            conf.version = '0.0.0-' + process.argv[1];
+            fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2));
+          " "$SHORT_SHA"
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Build and release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tag_name: main-${{ github.sha }}
-          name: "Build ${{ github.sha }}"
-          body: |
+          tagName: 'v__VERSION__'
+          releaseName: '__VERSION__'
+          releaseBody: |
             Automated release from push to `main`.
 
             **Commit:** ${{ github.sha }}
             **Message:** ${{ github.event.head_commit.message }}
+          releaseDraft: false
           prerelease: true
-          files: |
-            src-tauri/target/release/bundle/nsis/*.exe
-            src-tauri/target/release/bundle/msi/*.msi
+          updaterJsonPreferNsis: true

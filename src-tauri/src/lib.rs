@@ -15,6 +15,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tauri::{AppHandle, Emitter, Manager};
+use tauri_plugin_updater::UpdaterExt;
 use tower_http::cors::CorsLayer;
 
 // ---------------------------------------------------------------------------
@@ -87,6 +88,54 @@ type SharedState = Arc<Mutex<AppState>>;
 
 // ---------------------------------------------------------------------------
 // Tauri commands
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Updater
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateInfo {
+    pub version: String,
+    pub body: Option<String>,
+}
+
+#[tauri::command]
+async fn check_for_update(app: AppHandle) -> Result<Option<UpdateInfo>, String> {
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    match updater.check().await {
+        Ok(Some(update)) => Ok(Some(UpdateInfo {
+            version: update.version.clone(),
+            body: update.body.clone(),
+        })),
+        Ok(None) => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
+async fn install_update(app: AppHandle) -> Result<(), String> {
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    let update = updater
+        .check()
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "no update available".to_string())?;
+
+    update
+        .download_and_install(
+            |_chunk, _total| {},
+            || {},
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+
+    app.restart();
+}
+
+// ---------------------------------------------------------------------------
+// Game commands
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
@@ -659,6 +708,7 @@ fn spawn_admin_server(state: SharedState) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let app_data_dir = app
@@ -690,7 +740,14 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![load_games, get_config, launch_game, launch_mame])
+        .invoke_handler(tauri::generate_handler![
+            load_games,
+            get_config,
+            launch_game,
+            launch_mame,
+            check_for_update,
+            install_update,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

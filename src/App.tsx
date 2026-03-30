@@ -2,6 +2,7 @@ import { createSignal, createEffect, For, Show, onMount, onCleanup } from 'solid
 import { invoke } from '@tauri-apps/api/core'
 import { useGames } from './stores/gameStore'
 import { focusedIndex, setFocusedIndex, startInputLoop, stopInputLoop } from './stores/inputStore'
+import { useUpdater } from './stores/updaterStore'
 import { GameDetail } from './components/GameDetail'
 import type { GameEntry } from './shared/types'
 import './App.css'
@@ -60,6 +61,7 @@ function GameTile(props: GameTileProps) {
 
 function App() {
   const { games, loading } = useGames()
+  const { updateInfo, installing, installError, installUpdate, dismissUpdate } = useUpdater()
   const [selectedGame, setSelectedGame] = createSignal<GameEntry | null>(null)
   const [launchError, setLaunchError] = createSignal<string | null>(null)
 
@@ -253,6 +255,27 @@ function App() {
               OK
             </button>
           </div>
+        </div>
+      </Show>
+
+      <Show when={updateInfo() !== null}>
+        <div class="update-banner">
+          <span class="update-text">
+            Update available: v{updateInfo()!.version}
+          </span>
+          <Show when={installError()}>
+            <span class="update-error">{installError()}</span>
+          </Show>
+          <button
+            class="update-btn"
+            disabled={installing()}
+            onClick={() => void installUpdate()}
+          >
+            {installing() ? 'Installing...' : 'Install & Restart'}
+          </button>
+          <button class="update-dismiss" onClick={() => dismissUpdate()}>
+            Later
+          </button>
         </div>
       </Show>
     </main>
