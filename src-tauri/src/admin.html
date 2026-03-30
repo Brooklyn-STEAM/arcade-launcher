@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arcade Launcher — Admin</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: system-ui, sans-serif;
+        background: #0d0d0d;
+        color: #e8e8e8;
+        min-height: 100vh;
+        padding: 2rem;
+      }
+
+      h1 {
+        font-size: 1.4rem;
+        letter-spacing: 0.05em;
+        color: #ff2d78;
+        margin-bottom: 2rem;
+      }
+
+      h2 {
+        font-size: 1rem;
+        color: #00e5ff;
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .card {
+        background: #1a1a1a;
+        border: 1px solid #2a2a2a;
+        border-radius: 6px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+      }
+
+      label {
+        display: block;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #888;
+        margin-bottom: 0.3rem;
+        margin-top: 0.9rem;
+      }
+      label:first-of-type {
+        margin-top: 0;
+      }
+
+      input[type='text'],
+      input[type='password'],
+      input[type='file'],
+      textarea {
+        width: 100%;
+        background: #0d0d0d;
+        border: 1px solid #333;
+        border-radius: 4px;
+        color: #e8e8e8;
+        font-size: 0.9rem;
+        padding: 0.5rem 0.75rem;
+        outline: none;
+        transition: border-color 0.15s;
+      }
+      input[type='text']:focus,
+      input[type='password']:focus,
+      textarea:focus {
+        border-color: #00e5ff;
+      }
+
+      input[type='file'] {
+        cursor: pointer;
+        padding: 0.4rem 0.75rem;
+      }
+      input[type='file']::file-selector-button {
+        background: #2a2a2a;
+        color: #e8e8e8;
+        border: 1px solid #444;
+        border-radius: 3px;
+        padding: 0.3rem 0.7rem;
+        font-size: 0.8rem;
+        cursor: pointer;
+        margin-right: 0.5rem;
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 70px;
+      }
+
+      .row-inline {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-top: 0.9rem;
+      }
+      .row-inline label {
+        margin: 0;
+      }
+
+      input[type='checkbox'] {
+        width: 1rem;
+        height: 1rem;
+        accent-color: #ff2d78;
+        cursor: pointer;
+      }
+
+      button {
+        cursor: pointer;
+        border: none;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        padding: 0.55rem 1.2rem;
+        transition: opacity 0.15s;
+      }
+      button:hover {
+        opacity: 0.85;
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      .btn-primary {
+        background: #ff2d78;
+        color: #fff;
+        margin-top: 1.2rem;
+      }
+
+      .btn-secondary {
+        background: #2a2a2a;
+        color: #e8e8e8;
+      }
+
+      .btn-danger {
+        background: transparent;
+        color: #ff4444;
+        border: 1px solid #ff4444;
+        padding: 0.3rem 0.7rem;
+        font-size: 0.75rem;
+      }
+
+      #status {
+        font-size: 0.8rem;
+        margin-top: 0.75rem;
+        min-height: 1.2em;
+      }
+      .ok {
+        color: #00e5ff;
+      }
+      .err {
+        color: #ff4444;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+      }
+      th {
+        text-align: left;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #555;
+        padding: 0 0.75rem 0.6rem;
+      }
+      td {
+        padding: 0.6rem 0.75rem;
+        border-top: 1px solid #222;
+        vertical-align: middle;
+      }
+      tr:hover td {
+        background: #1e1e1e;
+      }
+
+      .thumb-cell {
+        width: 64px;
+      }
+      .thumb-cell img {
+        width: 64px;
+        height: 36px;
+        object-fit: cover;
+        border-radius: 3px;
+        display: block;
+        background: #222;
+      }
+      .thumb-placeholder {
+        width: 64px;
+        height: 36px;
+        background: #222;
+        border-radius: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        color: #444;
+      }
+
+      .tag {
+        display: inline-block;
+        border-radius: 3px;
+        padding: 0.15rem 0.45rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+      }
+      .tag-on {
+        background: #00332a;
+        color: #00e5a0;
+      }
+      .tag-off {
+        background: #2a1a1a;
+        color: #888;
+      }
+
+      .id-chip {
+        font-family: monospace;
+        font-size: 0.75rem;
+        color: #555;
+      }
+
+      .actions-cell {
+        white-space: nowrap;
+        display: flex;
+        gap: 0.4rem;
+        align-items: center;
+      }
+
+      #pin-gate {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 60vh;
+        gap: 1rem;
+      }
+      #pin-gate h1 {
+        margin: 0;
+      }
+      #pin-gate p {
+        color: #555;
+        font-size: 0.85rem;
+      }
+      #pin-input {
+        width: 12rem;
+        text-align: center;
+        font-size: 1.2rem;
+        letter-spacing: 0.2em;
+      }
+
+      #app {
+        display: none;
+      }
+
+      .empty {
+        color: #444;
+        font-size: 0.85rem;
+        padding: 1rem 0.75rem;
+      }
+
+      .file-hint {
+        font-size: 0.72rem;
+        color: #555;
+        margin-top: 0.3rem;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- PIN gate -->
+    <div id="pin-gate">
+      <h1>Arcade Admin</h1>
+      <p>Enter the admin PIN to continue</p>
+      <input id="pin-input" type="password" placeholder="PIN" autocomplete="off" />
+      <button class="btn-primary" onclick="submitPin()">Unlock</button>
+      <p id="pin-error" class="err" style="display: none">Incorrect PIN</p>
+    </div>
+
+    <!-- Main app (hidden until unlocked) -->
+    <div id="app">
+      <h1>Arcade Launcher — Admin</h1>
+
+      <!-- Add / Edit form -->
+      <div class="card">
+        <h2 id="form-title">Add Game</h2>
+
+        <input type="hidden" id="field-id" />
+
+        <label for="field-title">Title</label>
+        <input type="text" id="field-title" placeholder="My Awesome Game" />
+
+        <label for="field-author">Author</label>
+        <input type="text" id="field-author" placeholder="Student Name" />
+
+        <label for="field-description">Description</label>
+        <textarea
+          id="field-description"
+          placeholder="Short description shown on the detail screen…"
+        ></textarea>
+
+        <label for="field-version">Version</label>
+        <input type="text" id="field-version" placeholder="1.0" />
+
+        <div class="row-inline">
+          <input type="checkbox" id="field-enabled" checked />
+          <label for="field-enabled">Enabled (visible in launcher)</label>
+        </div>
+
+        <label for="field-zip" style="margin-top: 1.1rem">Game ZIP</label>
+        <input type="file" id="field-zip" accept=".zip" />
+        <p class="file-hint">ZIP must contain the game <code>.exe</code> at its root.</p>
+
+        <label for="field-thumbnail" style="margin-top: 1.1rem">Thumbnail Image</label>
+        <input
+          type="file"
+          id="field-thumbnail"
+          accept="image/png,image/jpeg,image/gif,image/webp"
+        />
+        <p class="file-hint">PNG, JPG, GIF, or WEBP. Displayed as a 16:9 tile preview.</p>
+
+        <button class="btn-primary" id="btn-save" onclick="submitGame()">Save Game</button>
+        <button
+          class="btn-secondary"
+          id="btn-cancel"
+          onclick="resetForm()"
+          style="margin-top: 1.2rem; display: none"
+        >
+          Cancel
+        </button>
+
+        <div id="status"></div>
+      </div>
+
+      <!-- Game list -->
+      <div class="card">
+        <h2>Games</h2>
+        <div id="game-list-container">
+          <p class="empty">No games yet.</p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ---------------------------------------------------------------------------
+      // PIN gate
+      // ---------------------------------------------------------------------------
+      const SESSION_KEY = 'arcadeAdminPin'
+
+      function getPin() {
+        return sessionStorage.getItem(SESSION_KEY) || ''
+      }
+
+      function submitPin() {
+        const pin = document.getElementById('pin-input').value.trim()
+        sessionStorage.setItem(SESSION_KEY, pin)
+        document.getElementById('pin-gate').style.display = 'none'
+        document.getElementById('app').style.display = 'block'
+        loadGames()
+      }
+
+      document.getElementById('pin-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') submitPin()
+      })
+
+      // Auto-unlock if PIN already stored this session
+      if (getPin()) {
+        document.getElementById('pin-gate').style.display = 'none'
+        document.getElementById('app').style.display = 'block'
+      }
+
+      // ---------------------------------------------------------------------------
+      // Game list
+      // ---------------------------------------------------------------------------
+      async function loadGames() {
+        try {
+          const res = await fetch('/api/games')
+          const games = await res.json()
+          renderGames(games)
+        } catch (err) {
+          console.error('Failed to load games', err)
+        }
+      }
+
+      function renderGames(games) {
+        const container = document.getElementById('game-list-container')
+        if (!games || games.length === 0) {
+          container.innerHTML = '<p class="empty">No games yet.</p>'
+          return
+        }
+
+        const rows = games
+          .map(
+            (g) => `
+      <tr>
+        <td class="thumb-cell">
+          ${
+            g.thumbnailPath
+              ? `<img src="/${esc(g.thumbnailPath)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="thumb-placeholder" style="display:none">?</div>`
+              : `<div class="thumb-placeholder">?</div>`
+          }
+        </td>
+        <td><span class="id-chip">${esc(g.id)}</span></td>
+        <td>${esc(g.title)}</td>
+        <td>${esc(g.author)}</td>
+        <td>${esc(g.version)}</td>
+        <td><span class="tag ${g.enabled ? 'tag-on' : 'tag-off'}">${g.enabled ? 'ON' : 'OFF'}</span></td>
+        <td>
+          <div class="actions-cell">
+            <button class="btn-secondary" style="font-size:0.75rem;padding:0.3rem 0.7rem"
+              onclick='editGame(${JSON.stringify(g)})'>Edit</button>
+            <button class="btn-danger"
+              onclick='deleteGame(${JSON.stringify(g.id)})'>Delete</button>
+          </div>
+        </td>
+      </tr>
+    `,
+          )
+          .join('')
+
+        container.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>ID</th><th>Title</th><th>Author</th><th>Version</th><th>Enabled</th><th></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `
+      }
+
+      function esc(str) {
+        return String(str ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+      }
+
+      // ---------------------------------------------------------------------------
+      // Delete
+      // ---------------------------------------------------------------------------
+      async function deleteGame(id) {
+        if (
+          !confirm(
+            `Delete game "${id}"?\n\nThis will remove the entry and all game files. This cannot be undone.`,
+          )
+        ) {
+          return
+        }
+
+        try {
+          const res = await fetch(`/api/games/${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+            headers: { 'X-Admin-Pin': getPin() },
+          })
+
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}))
+            if (res.status === 401) {
+              alert('Incorrect PIN. Please refresh and try again.')
+              sessionStorage.removeItem(SESSION_KEY)
+            } else {
+              alert(data.error || 'Delete failed')
+            }
+            return
+          }
+
+          loadGames()
+        } catch (err) {
+          alert('Network error: ' + err.message)
+        }
+      }
+
+      // ---------------------------------------------------------------------------
+      // Form
+      // ---------------------------------------------------------------------------
+      function resetForm() {
+        document.getElementById('form-title').textContent = 'Add Game'
+        document.getElementById('field-id').value = ''
+        document.getElementById('field-title').value = ''
+        document.getElementById('field-author').value = ''
+        document.getElementById('field-description').value = ''
+        document.getElementById('field-version').value = ''
+        document.getElementById('field-enabled').checked = true
+        document.getElementById('field-zip').value = ''
+        document.getElementById('field-thumbnail').value = ''
+        document.getElementById('btn-cancel').style.display = 'none'
+        document.getElementById('btn-save').disabled = false
+        setStatus('', '')
+      }
+
+      function editGame(game) {
+        document.getElementById('form-title').textContent = 'Edit Game'
+        document.getElementById('field-id').value = game.id
+        document.getElementById('field-title').value = game.title
+        document.getElementById('field-author').value = game.author
+        document.getElementById('field-description').value = game.description
+        document.getElementById('field-version').value = game.version
+        document.getElementById('field-enabled').checked = game.enabled
+        document.getElementById('field-zip').value = ''
+        document.getElementById('field-thumbnail').value = ''
+        document.getElementById('btn-cancel').style.display = 'inline-block'
+        document.getElementById('btn-save').disabled = false
+        setStatus('', '')
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+
+      async function submitGame() {
+        const id = document.getElementById('field-id').value.trim()
+        const title = document.getElementById('field-title').value.trim()
+        const author = document.getElementById('field-author').value.trim()
+        const description = document.getElementById('field-description').value.trim()
+        const version = document.getElementById('field-version').value.trim()
+        const enabled = document.getElementById('field-enabled').checked
+        const zipFile = document.getElementById('field-zip').files[0]
+        const thumbnailFile = document.getElementById('field-thumbnail').files[0]
+
+        if (!title) {
+          setStatus('Title is required.', 'err')
+          return
+        }
+
+        const saveBtn = document.getElementById('btn-save')
+        saveBtn.disabled = true
+
+        const payload = { title, author, description, version, enabled }
+        if (id) payload.id = id
+
+        setStatus('Saving…', '')
+
+        let savedId
+        try {
+          const res = await fetch('/api/games', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Admin-Pin': getPin(),
+            },
+            body: JSON.stringify(payload),
+          })
+
+          const data = await res.json()
+
+          if (!res.ok) {
+            if (res.status === 401) {
+              setStatus('Incorrect PIN. Please refresh and try again.', 'err')
+              sessionStorage.removeItem(SESSION_KEY)
+            } else {
+              setStatus(data.error || 'Server error', 'err')
+            }
+            saveBtn.disabled = false
+            return
+          }
+
+          savedId = data.id
+        } catch (err) {
+          setStatus('Network error: ' + err.message, 'err')
+          saveBtn.disabled = false
+          return
+        }
+
+        // If a ZIP was provided, upload it now
+        if (zipFile) {
+          setStatus('Uploading game files…', '')
+
+          const formData = new FormData()
+          formData.append('file', zipFile)
+
+          try {
+            const res = await fetch(`/api/games/${encodeURIComponent(savedId)}/upload`, {
+              method: 'POST',
+              headers: { 'X-Admin-Pin': getPin() },
+              body: formData,
+            })
+
+            const data = await res.json().catch(() => ({}))
+
+            if (!res.ok) {
+              if (res.status === 401) {
+                setStatus('Incorrect PIN. Please refresh and try again.', 'err')
+                sessionStorage.removeItem(SESSION_KEY)
+              } else {
+                setStatus(data.error || 'ZIP upload failed', 'err')
+              }
+              saveBtn.disabled = false
+              loadGames()
+              return
+            }
+          } catch (err) {
+            setStatus('ZIP upload error: ' + err.message, 'err')
+            saveBtn.disabled = false
+            loadGames()
+            return
+          }
+        }
+
+        // If a thumbnail was provided, upload it separately
+        if (thumbnailFile) {
+          setStatus('Uploading thumbnail…', '')
+
+          const formData = new FormData()
+          formData.append('file', thumbnailFile)
+
+          try {
+            const res = await fetch(`/api/games/${encodeURIComponent(savedId)}/thumbnail`, {
+              method: 'POST',
+              headers: { 'X-Admin-Pin': getPin() },
+              body: formData,
+            })
+
+            const data = await res.json().catch(() => ({}))
+
+            if (!res.ok) {
+              if (res.status === 401) {
+                setStatus('Incorrect PIN. Please refresh and try again.', 'err')
+                sessionStorage.removeItem(SESSION_KEY)
+              } else {
+                setStatus(data.error || 'Thumbnail upload failed', 'err')
+              }
+              saveBtn.disabled = false
+              loadGames()
+              return
+            }
+          } catch (err) {
+            setStatus('Thumbnail upload error: ' + err.message, 'err')
+            saveBtn.disabled = false
+            loadGames()
+            return
+          }
+        }
+
+        setStatus(`Saved! ID: ${savedId}`, 'ok')
+        resetForm()
+        loadGames()
+      }
+
+      function setStatus(msg, cls) {
+        const el = document.getElementById('status')
+        el.textContent = msg
+        el.className = cls
+      }
+
+      // Load games on page boot if already unlocked
+      if (getPin()) loadGames()
+    </script>
+  </body>
+</html>

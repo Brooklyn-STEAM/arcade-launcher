@@ -39,13 +39,13 @@ arcade-launcher/
 
 ## Commands
 
-| Command            | What it does                                           |
-| ------------------ | ------------------------------------------------------ |
-| `vp run tauri dev`   | Vite dev server + Tauri app shell in parallel (HMR)    |
-| `vp run tauri build` | Vite production build then Rust compile + installer    |
-| `vp dev`           | Vite dev server only (renderer, no Tauri shell)        |
-| `vp build`         | Vite production build only                             |
-| `vp check`         | Format, lint, and TypeScript type checks               |
+| Command              | What it does                                        |
+| -------------------- | --------------------------------------------------- |
+| `vp run tauri dev`   | Vite dev server + Tauri app shell in parallel (HMR) |
+| `vp run tauri build` | Vite production build then Rust compile + installer |
+| `vp dev`             | Vite dev server only (renderer, no Tauri shell)     |
+| `vp build`           | Vite production build only                          |
+| `vp check`           | Format, lint, and TypeScript type checks            |
 
 ---
 
@@ -73,11 +73,6 @@ from `@tauri-apps/api/event`.
 startup. Listens on `0.0.0.0:8037`. Serves `admin.html` at `GET /` and a REST API
 for managing the game registry. Accessible from any browser on the school LAN.
 All mutating routes require the `X-Admin-Pin` header to match `config.adminPin`.
-
-
-
-
-
 
 ---
 
@@ -116,8 +111,6 @@ All mutating routes require the `X-Admin-Pin` header to match `config.adminPin`.
   for managing `games-cache.json`. PIN-protected via `X-Admin-Pin` header.
 - **Runtime data in `%APPDATA%\arcade-launcher\`.** Config, registry, and game files
   all live here. See `PLAN.md` for the full layout.
-
-
 
 <!--VITE PLUS START-->
 

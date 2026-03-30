@@ -59,16 +59,16 @@ The `games.json` file is the authoritative registry. It is an array of
 `GameEntry` objects written and read by the embedded axum server and the Tauri
 commands.
 
-| Field             | Example value                          | Notes                                    |
-| ----------------- | -------------------------------------- | ---------------------------------------- |
-| `id`              | `dungeon-escape`                       | URL-safe slug; used as the folder name   |
-| `title`           | `Dungeon Escape`                       |                                          |
-| `author`          | `Jane & Carlos`                        |                                          |
-| `description`     | `Navigate the maze...`                 | Shown on detail screen                   |
-| `thumbnailPath`   | `games/dungeon-escape/thumbnail.png`   | Relative to `%APPDATA%\arcade-launcher\` |
-| `executablePath`  | `games/dungeon-escape/Game.exe`        | Relative to `%APPDATA%\arcade-launcher\` |
-| `version`         | `1.2`                                  | Informational; updated on re-upload      |
-| `enabled`         | `true`                                 | `false` hides without deleting           |
+| Field            | Example value                        | Notes                                    |
+| ---------------- | ------------------------------------ | ---------------------------------------- |
+| `id`             | `dungeon-escape`                     | URL-safe slug; used as the folder name   |
+| `title`          | `Dungeon Escape`                     |                                          |
+| `author`         | `Jane & Carlos`                      |                                          |
+| `description`    | `Navigate the maze...`               | Shown on detail screen                   |
+| `thumbnailPath`  | `games/dungeon-escape/thumbnail.png` | Relative to `%APPDATA%\arcade-launcher\` |
+| `executablePath` | `games/dungeon-escape/Game.exe`      | Relative to `%APPDATA%\arcade-launcher\` |
+| `version`        | `1.2`                                | Informational; updated on re-upload      |
+| `enabled`        | `true`                               | `false` hides without deleting           |
 
 All paths are **local** — no URLs, no Drive IDs.
 
@@ -130,6 +130,7 @@ The PIN (`adminPin` from `config.json`) is sent as an `X-Admin-Pin` header on al
 mutating requests. All non-GET routes return `401` if the PIN is missing or wrong.
 
 **Features:**
+
 - List all games (title, author, version, enabled status)
 - Add game: form with title, author, description, version, enabled toggle + ZIP upload
 - Edit game: same form pre-populated; re-upload replaces files
@@ -138,6 +139,7 @@ mutating requests. All non-GET routes return `401` if the PIN is missing or wron
 - PIN entry: shown on page load; stored in `sessionStorage`
 
 **ZIP upload contract:**
+
 - The ZIP must contain the game executable (`.exe`) at its root or one level deep
 - The ZIP may optionally contain a `thumbnail.png` at its root
 - On upload the server extracts all files to `games/<id>/`, auto-detects the first
@@ -152,19 +154,19 @@ live in `src-tauri/src/lib.rs` and are registered via `tauri::generate_handler![
 
 **Renderer → Rust (via `invoke()`):**
 
-| Command        | Params         | Response                          |
-| -------------- | -------------- | --------------------------------- |
-| `load_games`   | —              | `{ games: GameEntry[] }`          |
-| `launch_game`  | `{ gameId }`   | `{ success, error? }`             |
-| `launch_mame`  | —              | `{ success, error? }`             |
-| `get_config`   | —              | `AppConfig`                       |
+| Command       | Params       | Response                 |
+| ------------- | ------------ | ------------------------ |
+| `load_games`  | —            | `{ games: GameEntry[] }` |
+| `launch_game` | `{ gameId }` | `{ success, error? }`    |
+| `launch_mame` | —            | `{ success, error? }`    |
+| `get_config`  | —            | `AppConfig`              |
 
 **Rust → Renderer (via `app_handle.emit()` / `listen()`):**
 
-| Event        | Payload        |
-| ------------ | -------------- |
-| `gameExited` | `{ gameId }`   |
-| `mameExited` | `{}`           |
+| Event        | Payload      |
+| ------------ | ------------ |
+| `gameExited` | `{ gameId }` |
+| `mameExited` | `{}`         |
 
 ---
 
@@ -210,45 +212,45 @@ Buffer resets after 10 seconds of inactivity. On match:
 ### Phase 1 — Project cleanup
 
 - [x] Set app identifier to `nyc.steamcenter.arcade-launcher` in `tauri.conf.json`
-- [ ] Delete boilerplate greet command from `lib.rs` and remove `App.tsx` / `App.css` demo
-- [ ] Add `src/shared/types.ts` with `GameEntry`, `AppConfig` TS types
+- [x] Delete boilerplate greet command from `lib.rs` and remove `App.tsx` / `App.css` demo
+- [x] Add `src/shared/types.ts` with `GameEntry`, `AppConfig` TS types
 
 ### Phase 2 — Rust backend
 
-- [ ] On startup: read `config.json` from `app_data_dir()`; create with defaults if missing
-- [ ] On startup: read `games.json`; create empty array if missing
-- [ ] `load_games`: read and return parsed `games.json`
+- [x] On startup: read `config.json` from `app_data_dir()`; create with defaults if missing
+- [x] On startup: read `games.json`; create empty array if missing
+- [x] `load_games`: read and return parsed `games.json`
 - [ ] `launch_game`: resolve local exe path from registry; `std::process::Command` spawn; call `window.hide()`; watch for exit → restore window + emit `gameExited`
 - [ ] `launch_mame`: `std::process::Command` with `mamePath`/`mameArgs`; same hide/restore + emit `mameExited`
 - [ ] `get_config`: return parsed `AppConfig`
-- [ ] Register all commands with `tauri::generate_handler![]`
-- [ ] Spawn axum server on `0.0.0.0:8037` in a background tokio task on startup
-- [ ] axum route `GET /api/games`: read and return `games.json` as JSON
-- [ ] axum route `POST /api/games`: add or update a `GameEntry` in `games.json`
-- [ ] axum route `DELETE /api/games/:id`: remove entry + delete `games/<id>/` folder
-- [ ] axum route `POST /api/games/:id/upload`: receive ZIP, extract to `games/<id>/`, auto-detect exe + thumbnail, update entry in `games.json`
-- [ ] axum route `GET /games/:id/:file`: serve static files from `games/<id>/` (for thumbnail previews in admin UI)
-- [ ] axum route `GET /`: serve embedded admin HTML
-- [ ] PIN middleware: all non-GET routes require `X-Admin-Pin` header matching `config.adminPin`; return 401 otherwise
-- [ ] Add `axum`, `tower-http`, `zip` crates to `Cargo.toml`
+- [x] Register all commands with `tauri::generate_handler![]`
+- [x] Spawn axum server on `0.0.0.0:8037` in a background task on startup (via `tauri::async_runtime::spawn`)
+- [x] axum route `GET /api/games`: read and return `games.json` as JSON
+- [x] axum route `POST /api/games`: add or update a `GameEntry` in `games.json`; emit `gamesUpdated` event to renderer
+- [x] axum route `DELETE /api/games/:id`: remove entry + delete `games/<id>/` folder
+- [x] axum route `POST /api/games/:id/upload`: receive ZIP, extract to `games/<id>/`, auto-detect exe + thumbnail, update entry in `games.json`
+- [x] axum route `GET /games/:id/:file`: serve static files from `games/<id>/` (for thumbnail previews in admin UI)
+- [x] axum route `GET /`: serve embedded admin HTML
+- [x] PIN middleware: all non-GET routes require `X-Admin-Pin` header matching `config.adminPin`; return 401 otherwise
+- [x] Add `axum`, `tower-http`, `nanoid` crates to `Cargo.toml` (using nanoid for game IDs instead of slugs)
 
 ### Phase 3 — Admin web UI
 
-- [ ] `src-tauri/src/admin.html`: plain HTML + vanilla JS single-page admin UI
-- [ ] Game list view: fetch `GET /api/games`, render table with title/author/version/enabled
-- [ ] Add/edit form: title, author, description, version, enabled checkbox, ZIP file input
-- [ ] Upload flow: POST to `/api/games/:id/upload` with multipart form; show progress
-- [ ] Delete: DELETE `/api/games/:id` with confirmation prompt
-- [ ] PIN gate: prompt for PIN on load, store in `sessionStorage`, send as `X-Admin-Pin`
-- [ ] Thumbnail preview using `GET /games/:id/thumbnail.png`
+- [x] `src-tauri/src/admin.html`: plain HTML + vanilla JS single-page admin UI
+- [x] Game list view: fetch `GET /api/games`, render table with title/author/version/enabled
+- [x] Add/edit form: title, author, description, version, enabled checkbox
+- [x] Upload flow: POST to `/api/games/:id/upload` with multipart form; show progress
+- [x] Delete: DELETE `/api/games/:id` with confirmation prompt
+- [x] PIN gate: prompt for PIN on load, store in `sessionStorage`, send as `X-Admin-Pin`
+- [x] Thumbnail preview using `GET /games/:id/thumbnail.png`
 
 ### Phase 4 — Renderer UI
 
-- [ ] Replace `App.tsx` with arcade shell; import `invoke` from `@tauri-apps/api/core` and `listen` from `@tauri-apps/api/event` in stores
-- [ ] On load: call `load_games` → render grid
-- [ ] **Grid screen**: scrollable tile grid — thumbnail, title, author. Max visible tiles determined by viewport; rest scroll.
+- [x] Replace `App.tsx` with arcade shell; import `invoke` from `@tauri-apps/api/core` and `listen` from `@tauri-apps/api/event` in stores
+- [x] On load: call `load_games` → render grid; re-fetch on `gamesUpdated` push event
+- [x] **Grid screen**: scrollable tile grid — title, author. Max visible tiles determined by viewport; rest scroll.
 - [ ] **Detail screen**: thumbnail, title, author, description, "PRESS START" prompt; slide in over the grid
-- [ ] **Offline/error state**: if `load_games` returns empty array, show full-screen "NO GAMES LOADED" message with admin UI URL
+- [x] **Offline/error state**: if `load_games` returns empty array, show full-screen "NO GAMES LOADED" message with admin UI URL
 
 ### Phase 5 — Gamepad navigation
 
