@@ -17,11 +17,12 @@ arcade-launcher/
 │   │   └── default.json   — Tauri capability grants for the main window
 │   └── src/
 │       ├── main.rs        — binary entry point, calls lib::run()
-│       └── lib.rs         — Tauri commands, event emitters, process spawning
+│       ├── lib.rs         — Tauri commands, event emitters, process spawning, axum server startup
+│       └── admin.html     — management web UI (embedded in binary via include_str!)
 ├── src/                   — renderer (SolidJS app, built by Vite)
 │   ├── index.tsx          — SolidJS root mount
 │   ├── shared/
-│   │   └── types.ts       — GameEntry, AppConfig, DownloadProgress (TS types)
+│   │   └── types.ts       — GameEntry, AppConfig (TS types)
 │   ├── style.css          — global styles, CRT aesthetic, CSS custom properties
 │   ├── components/        — SolidJS components (GameGrid, GameDetail, etc.)
 │   ├── stores/            — SolidJS stores and signals shared across components
@@ -54,8 +55,8 @@ Tauri runs two isolated processes:
 
 **Rust process** (`src-tauri/src/lib.rs`) — the backend. Has full system access.
 Owns all Tauri command handlers, spawns game/MAME subprocesses via
-`std::process::Command`, reads/writes files, and makes all network requests via
-`reqwest`. Emits events to the renderer. Never touches the DOM.
+`std::process::Command`, reads/writes `games-cache.json` and `config.json`, and
+runs the embedded axum web server. Emits events to the renderer. Never touches the DOM.
 
 **Renderer** (`src/`) — a webview running the SolidJS app, built by Vite. Has no
 filesystem or system access. All communication with the Rust process goes through
@@ -67,6 +68,11 @@ decorated with `#[tauri::command]`. The renderer uses `invoke('commandName', arg
 from `@tauri-apps/api/core` to call them. Rust emits events with
 `app_handle.emit('eventName', payload)`; the renderer subscribes with `listen()`
 from `@tauri-apps/api/event`.
+
+**Admin web server** — an axum HTTP server spawned in a background tokio task on
+startup. Listens on `0.0.0.0:8037`. Serves `admin.html` at `GET /` and a REST API
+for managing the game registry. Accessible from any browser on the school LAN.
+All mutating routes require the `X-Admin-Pin` header to match `config.adminPin`.
 
 
 
@@ -100,14 +106,16 @@ from `@tauri-apps/api/event`.
 - **Gamepad API polling, not events.** Input is read each frame in a
   `requestAnimationFrame` loop via `navigator.getGamepads()`. The Gamepad API does
   not reliably fire events in all webview environments.
-- **Google Sheet as CSV, no API key.** The sheet is published via
-  _File → Share → Publish to web → CSV_. The Rust process fetches the raw CSV URL
-  using `reqwest`.
-- **Google Drive downloads go through the Rust process.** Drive direct-download URLs
-  require handling a virus-scan redirect for large files; the renderer only receives
-  progress events via `listen()`.
-- **Runtime data in `%APPDATA%\arcade-launcher\`.** Config, cache, and downloaded
-  game files all live here. See `PLAN.md` for the full layout.
+- **Game registry is local.** `games-cache.json` in `%APPDATA%\arcade-launcher\` is
+  the authoritative source of truth. No external server or Google Sheets dependency.
+- **Games are uploaded, not downloaded.** The instructor uploads ZIP files via the
+  admin web UI at `http://<cabinet-ip>:8037`. The Rust process extracts them to
+  `games/<id>/`. The renderer never fetches game files from the network.
+- **Admin server runs inside the launcher.** An axum HTTP server on port 8037 is
+  spawned at startup and shut down on exit. It serves the admin UI and a REST API
+  for managing `games-cache.json`. PIN-protected via `X-Admin-Pin` header.
+- **Runtime data in `%APPDATA%\arcade-launcher\`.** Config, registry, and game files
+  all live here. See `PLAN.md` for the full layout.
 
 
 

@@ -27,14 +27,21 @@ vite.config.ts            — fine as-is (port 1420, ignores src-tauri/)
 ## How It Works
 
 ```
-Instructor edits Google Sheet
+Instructor's browser (any machine on school LAN)
+        │  http://<cabinet-ip>:8037  (PIN protected)
+        ▼
+axum web server (embedded in Rust process, always running)
+  ├── GET  /                      → serves admin HTML/JS (embedded in binary)
+  ├── GET  /api/games             → reads games.json, returns JSON array
+  ├── POST /api/games             → add/update a game entry in games.json
+  ├── DELETE /api/games/:id       → removes entry + deletes games/<id>/ folder
+  └── POST /api/games/:id/upload  → streams ZIP → extracts to games/<id>/
         │
         ▼
-lib.rs  ──fetch CSV──►  parse GameEntry[]  ──write──►  games-cache.json
-        │                                                           │
-        │  invoke()                                          read on offline
+games.json  ←→  %APPDATA%\arcade-launcher\games.json
+        │
         ▼
-src/stores/  ──renders──►  game grid  ──select──►  detail screen
+launcher reads on startup → Tauri IPC → SolidJS store → game grid
         │
         │  invoke: launch_game / launch_mame
         ▼
@@ -46,29 +53,41 @@ lib.rs  ──std::process::Command──►  game.exe / mame64.exe
 
 ---
 
-## Google Sheet Schema
+## Game Entry Schema (`games.json`)
 
-The instructor publishes the sheet as CSV via **File → Share → Publish to web → CSV**.
-No API key required.
+The `games.json` file is the authoritative registry. It is an array of
+`GameEntry` objects written and read by the embedded axum server and the Tauri
+commands.
 
-| Column                | Example value        | Notes                                    |
-| --------------------- | -------------------- | ---------------------------------------- |
-| `title`               | Dungeon Escape       |                                          |
-| `author`              | Jane & Carlos        |                                          |
-| `description`         | Navigate the maze... | Shown on detail screen                   |
-| `thumbnail_drive_id`  | `1aBcDeFgHiJ...`     | Google Drive file ID                     |
-| `executable_drive_id` | `1xYz012345...`      | Drive file ID — zip or exe               |
-| `version`             | `1.2`                | Increment triggers automatic re-download |
-| `enabled`             | `TRUE`               | `FALSE` hides without deleting row       |
+| Field             | Example value                          | Notes                                    |
+| ----------------- | -------------------------------------- | ---------------------------------------- |
+| `id`              | `dungeon-escape`                       | URL-safe slug; used as the folder name   |
+| `title`           | `Dungeon Escape`                       |                                          |
+| `author`          | `Jane & Carlos`                        |                                          |
+| `description`     | `Navigate the maze...`                 | Shown on detail screen                   |
+| `thumbnailPath`   | `games/dungeon-escape/thumbnail.png`   | Relative to `%APPDATA%\arcade-launcher\` |
+| `executablePath`  | `games/dungeon-escape/Game.exe`        | Relative to `%APPDATA%\arcade-launcher\` |
+| `version`         | `1.2`                                  | Informational; updated on re-upload      |
+| `enabled`         | `true`                                 | `false` hides without deleting           |
 
-Thumbnail URL pattern (loaded directly in renderer):
+All paths are **local** — no URLs, no Drive IDs.
 
+Example `games.json`:
+
+```json
+[
+  {
+    "id": "dungeon-escape",
+    "title": "Dungeon Escape",
+    "author": "Jane & Carlos",
+    "description": "Navigate the maze...",
+    "thumbnailPath": "games/dungeon-escape/thumbnail.png",
+    "executablePath": "games/dungeon-escape/DungeonEscape.exe",
+    "version": "1.2",
+    "enabled": true
+  }
+]
 ```
-https://drive.google.com/uc?export=view&id=<thumbnail_drive_id>
-```
-
-Executable files must be shared as **"Anyone with the link — Viewer"**. Large files
-trigger a Drive virus-scan interstitial; the download code must handle that redirect.
 
 ---
 
@@ -78,17 +97,20 @@ All runtime data lives in `%APPDATA%\arcade-launcher\`.
 
 ```
 %APPDATA%\arcade-launcher\
-├── config.json          — sheetCsvUrl, mamePath, mameArgs, gamesDir override
-├── games-cache.json     — last-fetched sheet rows + local manifest (version, path)
+├── config.json          — adminPin, mamePath, mameArgs, gamesDir override
+├── games.json     — authoritative game registry (array of GameEntry)
 └── games\
     └── <game-id>\       — extracted game files live here
+        ├── thumbnail.png
+        ├── Game.exe
+        └── ...
 ```
 
 `config.json` defaults (created on first run if missing):
 
 ```json
 {
-  "sheetCsvUrl": "",
+  "adminPin": "1234",
   "mamePath": "C:\\mame\\mame64.exe",
   "mameArgs": [],
   "gamesDir": ""
@@ -99,6 +121,30 @@ All runtime data lives in `%APPDATA%\arcade-launcher\`.
 
 ---
 
+## Admin Web UI (port 8037)
+
+A plain HTML + vanilla JS single-page app embedded in the Rust binary via
+`include_str!`. The axum server serves it at `GET /`. No build step required.
+
+The PIN (`adminPin` from `config.json`) is sent as an `X-Admin-Pin` header on all
+mutating requests. All non-GET routes return `401` if the PIN is missing or wrong.
+
+**Features:**
+- List all games (title, author, version, enabled status)
+- Add game: form with title, author, description, version, enabled toggle + ZIP upload
+- Edit game: same form pre-populated; re-upload replaces files
+- Delete game: removes entry from `games.json` + deletes `games/<id>/` folder
+- Thumbnail preview: served via `GET /games/<id>/<filename>` static route
+- PIN entry: shown on page load; stored in `sessionStorage`
+
+**ZIP upload contract:**
+- The ZIP must contain the game executable (`.exe`) at its root or one level deep
+- The ZIP may optionally contain a `thumbnail.png` at its root
+- On upload the server extracts all files to `games/<id>/`, auto-detects the first
+  `.exe` as `executablePath`, looks for `thumbnail.png` as `thumbnailPath`
+
+---
+
 ## IPC Contract
 
 Defined in `src/shared/types.ts` (renderer-only TS types). Rust command signatures
@@ -106,22 +152,19 @@ live in `src-tauri/src/lib.rs` and are registered via `tauri::generate_handler![
 
 **Renderer → Rust (via `invoke()`):**
 
-| Command          | Params                             | Response                                       |
-| ---------------- | ---------------------------------- | ---------------------------------------------- |
-| `fetch_games`    | —                                  | `{ games: GameEntry[], fromCache: boolean }`   |
-| `download_game`  | `{ gameId, driveFileId, version }` | `{ success, localPath?, error? }`              |
-| `check_updates`  | —                                  | `{ needsUpdate: string[] }` (array of gameIds) |
-| `launch_game`    | `{ gameId }`                       | `{ success, error? }`                          |
-| `launch_mame`    | —                                  | `{ success, error? }`                          |
-| `get_config`     | —                                  | `AppConfig`                                    |
+| Command        | Params         | Response                          |
+| -------------- | -------------- | --------------------------------- |
+| `load_games`   | —              | `{ games: GameEntry[] }`          |
+| `launch_game`  | `{ gameId }`   | `{ success, error? }`             |
+| `launch_mame`  | —              | `{ success, error? }`             |
+| `get_config`   | —              | `AppConfig`                       |
 
 **Rust → Renderer (via `app_handle.emit()` / `listen()`):**
 
-| Event              | Payload                                                        |
-| ------------------ | -------------------------------------------------------------- |
-| `downloadProgress` | `{ gameId, bytesReceived, totalBytes, percent, done, error? }` |
-| `gameExited`       | `{ gameId }`                                                   |
-| `mameExited`       | `{}`                                                           |
+| Event        | Payload        |
+| ------------ | -------------- |
+| `gameExited` | `{ gameId }`   |
+| `mameExited` | `{}`           |
 
 ---
 
@@ -167,31 +210,47 @@ Buffer resets after 10 seconds of inactivity. On match:
 ### Phase 1 — Project cleanup
 
 - [x] Set app identifier to `nyc.steamcenter.arcade-launcher` in `tauri.conf.json`
-- [ ] Configure window in `tauri.conf.json`: `fullscreen: true`, `decorations: false`, `width: 1920`, `height: 1080`
 - [ ] Delete boilerplate greet command from `lib.rs` and remove `App.tsx` / `App.css` demo
-- [ ] Add `src/shared/types.ts` with `GameEntry`, `AppConfig`, `DownloadProgress` TS types
+- [ ] Add `src/shared/types.ts` with `GameEntry`, `AppConfig` TS types
 
-### Phase 2 — Rust backend (Tauri commands)
+### Phase 2 — Rust backend
 
 - [ ] On startup: read `config.json` from `app_data_dir()`; create with defaults if missing
-- [ ] `fetch_games`: fetch CSV from `sheetCsvUrl` via `reqwest`, parse rows into `GameEntry[]`, write to `games-cache.json`; return cached data if fetch fails
-- [ ] `check_updates`: diff sheet versions against `games-cache.json` manifest, return stale game IDs
-- [ ] `download_game`: stream Drive file to disk via `reqwest`; handle virus-scan redirect; unzip if `.zip`; emit `downloadProgress` events; update manifest
-- [ ] `launch_game`: resolve local exe path from manifest; `std::process::Command` spawn; call `window.hide()`; watch for exit → restore window + emit `gameExited`
+- [ ] On startup: read `games.json`; create empty array if missing
+- [ ] `load_games`: read and return parsed `games.json`
+- [ ] `launch_game`: resolve local exe path from registry; `std::process::Command` spawn; call `window.hide()`; watch for exit → restore window + emit `gameExited`
 - [ ] `launch_mame`: `std::process::Command` with `mamePath`/`mameArgs`; same hide/restore + emit `mameExited`
+- [ ] `get_config`: return parsed `AppConfig`
 - [ ] Register all commands with `tauri::generate_handler![]`
-- [ ] Add `reqwest` (with `blocking` or async) and `zip` crates to `Cargo.toml`
+- [ ] Spawn axum server on `0.0.0.0:8037` in a background tokio task on startup
+- [ ] axum route `GET /api/games`: read and return `games.json` as JSON
+- [ ] axum route `POST /api/games`: add or update a `GameEntry` in `games.json`
+- [ ] axum route `DELETE /api/games/:id`: remove entry + delete `games/<id>/` folder
+- [ ] axum route `POST /api/games/:id/upload`: receive ZIP, extract to `games/<id>/`, auto-detect exe + thumbnail, update entry in `games.json`
+- [ ] axum route `GET /games/:id/:file`: serve static files from `games/<id>/` (for thumbnail previews in admin UI)
+- [ ] axum route `GET /`: serve embedded admin HTML
+- [ ] PIN middleware: all non-GET routes require `X-Admin-Pin` header matching `config.adminPin`; return 401 otherwise
+- [ ] Add `axum`, `tower-http`, `zip` crates to `Cargo.toml`
 
-### Phase 3 — Renderer UI
+### Phase 3 — Admin web UI
+
+- [ ] `src-tauri/src/admin.html`: plain HTML + vanilla JS single-page admin UI
+- [ ] Game list view: fetch `GET /api/games`, render table with title/author/version/enabled
+- [ ] Add/edit form: title, author, description, version, enabled checkbox, ZIP file input
+- [ ] Upload flow: POST to `/api/games/:id/upload` with multipart form; show progress
+- [ ] Delete: DELETE `/api/games/:id` with confirmation prompt
+- [ ] PIN gate: prompt for PIN on load, store in `sessionStorage`, send as `X-Admin-Pin`
+- [ ] Thumbnail preview using `GET /games/:id/thumbnail.png`
+
+### Phase 4 — Renderer UI
 
 - [ ] Replace `App.tsx` with arcade shell; import `invoke` from `@tauri-apps/api/core` and `listen` from `@tauri-apps/api/event` in stores
-- [ ] On load: call `fetch_games` → render grid; call `check_updates` → silently queue downloads in background
+- [ ] On load: call `load_games` → render grid
 - [ ] **Grid screen**: scrollable tile grid — thumbnail, title, author. Max visible tiles determined by viewport; rest scroll.
-- [ ] **Detail screen**: full cover art (Drive thumbnail), title, author, description, "PRESS START" prompt; slide in over the grid
-- [ ] **Download progress overlay**: progress bar anchored to tile; listens for `downloadProgress` events; auto-dismisses on `done: true`
-- [ ] **Offline/error state**: if `fetch_games` returns `fromCache: true`, show a small "OFFLINE" badge; if no cache exists at all, show a full-screen error
+- [ ] **Detail screen**: thumbnail, title, author, description, "PRESS START" prompt; slide in over the grid
+- [ ] **Offline/error state**: if `load_games` returns empty array, show full-screen "NO GAMES LOADED" message with admin UI URL
 
-### Phase 4 — Gamepad navigation
+### Phase 5 — Gamepad navigation
 
 - [ ] `requestAnimationFrame` polling loop; read `navigator.getGamepads()`
 - [ ] Deadzone helper for analog axes
@@ -200,14 +259,14 @@ Buffer resets after 10 seconds of inactivity. On match:
 - [ ] Apply CSS focus class to the focused tile (neon glow ring)
 - [ ] Keyboard fallback handler (same actions as gamepad)
 
-### Phase 5 — Konami code + MAME
+### Phase 6 — Konami code + MAME
 
 - [ ] Input sequence buffer; append gamepad and keyboard inputs to the same buffer; reset on 10s timeout
 - [ ] Detect `↑↑↓↓←→←→BA` sequence
 - [ ] Trigger flash animation, call `invoke('launch_mame')`
 - [ ] Handle `mameExited` event: restore launcher, play "welcome back" animation
 
-### Phase 6 — Retro visual design
+### Phase 7 — Retro visual design
 
 - [ ] Replace system font with `Press Start 2P` (bundle locally under `src/fonts/`)
 - [ ] Color palette: `#0a0a0a` background, `#ff2d78` primary accent, `#00e5ff` secondary, `#f5ff00` highlight
@@ -222,8 +281,8 @@ Buffer resets after 10 seconds of inactivity. On match:
 
 ## Deferred / Future
 
-- **Admin overlay**: hold Start + Select for 3s → settings screen (edit Sheet URL, MAME path) without recompiling
 - **Attract mode**: screensaver cycling game art after N minutes idle
 - **Sound effects**: coin insert, blip on navigation, launch whoosh (Web Audio API)
 - **Multiple thumbnails per game**: cycle on detail screen
 - **Auto-launch on boot**: Windows Task Scheduler setup guide
+- **Admin PIN change UI**: change PIN from within the admin web UI without editing `config.json`
