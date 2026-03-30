@@ -83,5 +83,6 @@ jobs:
             **Commit:** ${{ github.sha }}
             **Message:** ${{ github.event.head_commit.message }}
           releaseDraft: false
-          prerelease: true
+          prerelease: false
           updaterJsonPreferNsis: true
+          args: --bundles nsis
