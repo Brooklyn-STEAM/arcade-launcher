@@ -1,5 +1,6 @@
 import { createSignal, createEffect, For, Show, onMount, onCleanup } from 'solid-js'
 import { invoke } from '@tauri-apps/api/core'
+import { getVersion } from '@tauri-apps/api/app'
 import { useGames } from './stores/gameStore'
 import { focusedIndex, setFocusedIndex, startInputLoop, stopInputLoop } from './stores/inputStore'
 import { useUpdater } from './stores/updaterStore'
@@ -64,6 +65,8 @@ function App() {
   const { updateInfo, installing, installError, installUpdate, dismissUpdate } = useUpdater()
   const [selectedGame, setSelectedGame] = createSignal<GameEntry | null>(null)
   const [launchError, setLaunchError] = createSignal<string | null>(null)
+  const [localIp, setLocalIp] = createSignal('localhost')
+  const [appVersion, setAppVersion] = createSignal('')
 
   // The grid element ref — used to compute column count for up/down navigation
   let gridRef: HTMLDivElement | undefined = undefined
@@ -175,8 +178,13 @@ function App() {
 
   onMount(() => {
     document.addEventListener('keydown', handleKeyDown)
-
     startInputLoop(() => enabledGames().length, getColCount, handleConfirm, handleBack)
+    invoke<string>('get_local_ip')
+      .then(setLocalIp)
+      .catch(() => {})
+    getVersion()
+      .then(setAppVersion)
+      .catch(() => {})
   })
 
   onCleanup(() => {
@@ -194,13 +202,6 @@ function App() {
 
   return (
     <main class="shell">
-      <header class="header">
-        <span class="header-title">ARCADE</span>
-        <span class="header-hint">
-          Admin UI: <code>http://localhost:8037</code>
-        </span>
-      </header>
-
       <Show when={loading()}>
         <div class="center-message">
           <span class="loading-dots">Loading</span>
@@ -211,7 +212,7 @@ function App() {
         <div class="center-message">
           <p>NO GAMES LOADED</p>
           <p class="hint">Open the admin UI to add a game:</p>
-          <code>http://localhost:8037</code>
+          <code>http://{localIp()}:8037</code>
         </div>
       </Show>
 
@@ -272,6 +273,13 @@ function App() {
           </button>
         </div>
       </Show>
+
+      <div class="status-bar">
+        http://{localIp()}:8037
+        <Show when={appVersion()}>
+          {' · '}v{appVersion()}
+        </Show>
+      </div>
     </main>
   )
 }

@@ -7,7 +7,6 @@
 :root {
   /* Palette */
   --bg: #1a1040;
-  --bg-header: #231560;
   --surface: #2a1c6e;
   --surface-alt: #3a2a88;
   --border: #4a3a9a;
@@ -41,36 +40,18 @@ body {
   height: 100vh;
 }
 
-/* Header */
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.85rem 1.75rem;
-  background: var(--bg-header);
-  border-bottom: 2px solid var(--accent);
-  box-shadow: 0 2px 16px rgba(255, 121, 198, 0.25);
-  flex-shrink: 0;
-}
-
-.header-title {
-  font-family: 'Press Start 2P', monospace;
-  font-size: 1.1rem;
-  color: var(--accent);
-  letter-spacing: 0.1em;
-  text-shadow:
-    0 0 8px rgba(255, 121, 198, 0.7),
-    0 0 20px rgba(255, 121, 198, 0.35);
-}
-
-.header-hint {
-  font-size: 0.72rem;
+/* Status bar */
+.status-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.58rem;
   color: var(--text-dim);
-}
-
-.header-hint code {
-  color: var(--accent2);
-  font-size: 0.72rem;
+  opacity: 0.35;
+  pointer-events: none;
+  letter-spacing: 0.04em;
+  font-family: monospace;
 }
 
 /* Game grid */

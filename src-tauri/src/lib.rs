@@ -149,6 +149,20 @@ fn get_config(state: tauri::State<SharedState>) -> AppConfig {
 }
 
 #[tauri::command]
+fn get_local_ip() -> String {
+    // Open a UDP socket aimed at an external address — no data is sent.
+    // The OS picks the appropriate local interface, letting us read our LAN IP.
+    use std::net::UdpSocket;
+    UdpSocket::bind("0.0.0.0:0")
+        .and_then(|s| {
+            s.connect("8.8.8.8:80")?;
+            s.local_addr()
+        })
+        .map(|addr| addr.ip().to_string())
+        .unwrap_or_else(|_| "localhost".to_string())
+}
+
+#[tauri::command]
 fn launch_game(
     game_id: String,
     state: tauri::State<SharedState>,
@@ -743,6 +757,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             load_games,
             get_config,
+            get_local_ip,
             launch_game,
             launch_mame,
             check_for_update,
