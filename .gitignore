@@ -1,27 +1,2 @@
-# Dependencies
-node_modules/
-
-# Build output
-build/
-dist/
-*.app
-
-# Electrobun
-.electrobun/
-
-# IDE
-.vscode/*
-!.vscode/extensions.json
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-npm-debug.log*
-
-# Environment
-.env
-.env.local
-.env.*.local
+node_modules
+dist
