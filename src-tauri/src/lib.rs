@@ -752,6 +752,14 @@ pub fn run() {
 
             spawn_admin_server(shared_state);
 
+            // Go fullscreen in production builds; stay windowed during dev
+            if !cfg!(debug_assertions) {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_fullscreen(true);
+                    let _ = window.set_decorations(false);
+                }
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
