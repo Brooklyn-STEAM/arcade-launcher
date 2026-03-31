@@ -24,10 +24,19 @@ export function GameTile(props: GameTileProps) {
         tileRef = el
       }}
       class="game-tile"
-      classList={{ focused: props.focused }}
+      classList={{ focused: props.focused, 'tile-disabled': !props.game.enabled }}
       tabIndex={-1}
       onClick={() => props.onClick()}
     >
+      {/* Red title band at top — NES box art style */}
+      <div class="tile-header">
+        <span class="tile-title-text">{props.game.title}</span>
+        <Show when={!props.game.enabled}>
+          <span class="tile-badge-off">OFF</span>
+        </Show>
+      </div>
+
+      {/* Thumbnail */}
       <div class="tile-thumb">
         <Show
           when={props.game.thumbnailPath}
@@ -36,10 +45,11 @@ export function GameTile(props: GameTileProps) {
           <img src={`http://localhost:8037/${props.game.thumbnailPath}`} alt={props.game.title} />
         </Show>
       </div>
-      <div class="tile-info">
-        <p class="tile-title">{props.game.title}</p>
-        <p class="tile-author">{props.game.author}</p>
-        <p class="tile-version">v{props.game.version}</p>
+
+      {/* Footer strip — author + version */}
+      <div class="tile-footer">
+        <span class="tile-author">By: {props.game.author}</span>
+        <span class="tile-version">v{props.game.version}</span>
       </div>
     </div>
   )

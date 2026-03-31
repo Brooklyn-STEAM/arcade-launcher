@@ -228,9 +228,15 @@ function App() {
       </Show>
 
       <div class="status-bar">
-        http://{localIp()}:8037
+        <div class="status-bar-admin">
+          <span class="status-bar-label">ADMIN</span>
+          <span>http://{localIp()}:8037</span>
+        </div>
         <Show when={appVersion()}>
-          {' · '}v{appVersion()}
+          <div class="status-bar-ver">
+            <span class="status-bar-label">VER</span>
+            <span>v{appVersion()}</span>
+          </div>
         </Show>
       </div>
     </main>
