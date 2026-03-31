@@ -249,17 +249,17 @@ Buffer resets after 10 seconds of inactivity. On match:
 - [x] Replace `App.tsx` with arcade shell; import `invoke` from `@tauri-apps/api/core` and `listen` from `@tauri-apps/api/event` in stores
 - [x] On load: call `load_games` → render grid; re-fetch on `gamesUpdated` push event
 - [x] **Grid screen**: scrollable tile grid — title, author. Max visible tiles determined by viewport; rest scroll.
-- [ ] **Detail screen**: thumbnail, title, author, description, "PRESS START" prompt; slide in over the grid
+- [x] **Detail screen**: thumbnail, title, author, description, "PRESS START" prompt; slide in over the grid
 - [x] **Offline/error state**: if `load_games` returns empty array, show full-screen "NO GAMES LOADED" message with admin UI URL
 
 ### Phase 5 — Gamepad navigation
 
-- [ ] `requestAnimationFrame` polling loop; read `navigator.getGamepads()`
-- [ ] Deadzone helper for analog axes
-- [ ] Button debounce: track which buttons were pressed last frame
-- [ ] Focus model: single `focusedIndex` integer; arrow input mutates it, wraps at edges
-- [ ] Apply CSS focus class to the focused tile (neon glow ring)
-- [ ] Keyboard fallback handler (same actions as gamepad)
+- [x] `requestAnimationFrame` polling loop; read `navigator.getGamepads()`
+- [x] Deadzone helper for analog axes
+- [x] Button debounce: track which buttons were pressed last frame
+- [x] Focus model: single `focusedIndex` integer; arrow input mutates it, wraps at edges
+- [x] Apply CSS focus class to the focused tile (neon glow ring)
+- [x] Keyboard fallback handler (same actions as gamepad)
 
 ### Phase 6 — Konami code + MAME
 
@@ -270,8 +270,8 @@ Buffer resets after 10 seconds of inactivity. On match:
 
 ### Phase 7 — Retro visual design
 
-- [ ] Replace system font with `Press Start 2P` (bundle locally under `src/fonts/`)
-- [ ] Color palette: `#0a0a0a` background, `#ff2d78` primary accent, `#00e5ff` secondary, `#f5ff00` highlight
+- [x] Replace system font with `Press Start 2P` (bundle locally under `src/fonts/`)
+- [x] Color palette: `#0a0a0a` background, `#ff2d78` primary accent, `#00e5ff` secondary, `#f5ff00` highlight
 - [ ] CRT scanline overlay: full-viewport `::after` pseudo-element, `pointer-events: none`, horizontal repeating gradient, ~3% opacity
 - [ ] Scanline flicker: `@keyframes` brightness oscillation, 8s loop, subtle
 - [ ] Tile focus ring: `box-shadow: 0 0 0 3px <accent>, 0 0 24px <accent>` — animated pulse
