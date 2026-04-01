@@ -16,7 +16,7 @@ import './App.css'
 function App() {
   const { games, loading } = useGames()
   const { updateInfo, installing, installError, installUpdate, dismissUpdate } = useUpdater()
-  const [selectedGame, setSelectedGame] = createSignal<GameEntry | null>(null)
+  const [confirmGame, setConfirmGame] = createSignal<GameEntry | null>(null)
   const [launchError, setLaunchError] = createSignal<string | null>(null)
   const [localIp, setLocalIp] = createSignal('localhost')
   const [appVersion, setAppVersion] = createSignal('')
@@ -34,34 +34,39 @@ function App() {
 
   const enabledGames = () => games().filter((g) => g.enabled)
 
-  // Confirm action: dismiss error popup first; otherwise open/launch
+  // The currently highlighted game (drives the detail panel)
+  const focusedGame = () => enabledGames()[focusedIndex()] ?? null
+
+  // Confirm action: dismiss error first; otherwise open launch prompt
   function handleConfirm() {
     if (launchError()) {
       dismissError()
       return
     }
-    const detail = selectedGame()
-    if (detail) {
-      // Detail is open — launch the game (close first, then invoke)
-      handleLaunch(detail)
-    } else {
-      const game = enabledGames()[focusedIndex()]
-      if (game) setSelectedGame(game)
+    if (confirmGame()) {
+      // Prompt already open — confirm the launch
+      executeLaunch(confirmGame()!)
+      return
     }
+    const game = focusedGame()
+    if (game) setConfirmGame(game)
   }
 
-  // Back action: dismiss error popup first, then close detail if open
+  // Back action: dismiss error → dismiss confirm prompt → no-op
   function handleBack() {
     if (launchError()) {
       dismissError()
       return
     }
-    setSelectedGame(null)
+    if (confirmGame()) {
+      setConfirmGame(null)
+      return
+    }
   }
 
-  // Launch: close detail screen then invoke launch_game
-  function handleLaunch(game: GameEntry) {
-    setSelectedGame(null)
+  // Execute the actual launch IPC call
+  function executeLaunch(game: GameEntry) {
+    setConfirmGame(null)
     invoke('launch_game', { gameId: game.id }).catch((err: unknown) => {
       const msg = typeof err === 'string' ? err : 'Failed to launch game.'
       setLaunchError(msg)
@@ -84,15 +89,14 @@ function App() {
       return
     }
 
-    const detail = selectedGame()
-
-    if (detail) {
+    // Confirm prompt intercepts navigation
+    if (confirmGame()) {
       if (e.key === 'Escape') {
         e.preventDefault()
-        setSelectedGame(null)
+        setConfirmGame(null)
       } else if (e.key === 'Enter') {
         e.preventDefault()
-        handleLaunch(detail)
+        executeLaunch(confirmGame()!)
       }
       return
     }
@@ -161,6 +165,7 @@ function App() {
         <span class="stars-2" />
         <span class="stars-3" />
       </div>
+
       <Show when={loading()}>
         <div class="center-message">
           <span class="loading-dots">Loading</span>
@@ -176,36 +181,66 @@ function App() {
       </Show>
 
       <Show when={!loading() && enabledGames().length > 0}>
-        <div
-          class="game-grid"
-          ref={(el) => {
-            gridRef = el
-          }}
-        >
-          <For each={enabledGames()}>
-            {(game, index) => (
-              <GameTile
-                game={game}
-                index={index()}
-                focused={focusedIndex() === index()}
-                onClick={() => {
-                  setFocusedIndex(index())
-                  setSelectedGame(game)
-                }}
-              />
-            )}
-          </For>
+        {/* Two-column arcade layout */}
+        <div class="arcade-layout">
+          {/* Left: scrollable game grid */}
+          <div class="grid-panel">
+            <div
+              class="game-grid"
+              ref={(el) => {
+                gridRef = el
+              }}
+            >
+              <For each={enabledGames()}>
+                {(game, index) => (
+                  <GameTile
+                    game={game}
+                    index={index()}
+                    focused={focusedIndex() === index()}
+                    onClick={() => {
+                      setFocusedIndex(index())
+                    }}
+                  />
+                )}
+              </For>
+            </div>
+          </div>
+
+          {/* Right: always-visible detail panel */}
+          <div class="detail-area">
+            <GameDetail
+              game={focusedGame()}
+              onLaunch={() => {
+                const game = focusedGame()
+                if (game) setConfirmGame(game)
+              }}
+            />
+          </div>
         </div>
       </Show>
 
-      <Show when={selectedGame() !== null}>
-        <GameDetail
-          game={selectedGame()!}
-          onClose={handleBack}
-          onLaunch={() => handleLaunch(selectedGame()!)}
-        />
+      {/* Launch confirmation prompt */}
+      <Show when={confirmGame() !== null}>
+        <div class="confirm-overlay" onClick={() => setConfirmGame(null)}>
+          <div class="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <p class="confirm-title">LAUNCH GAME?</p>
+            <p class="confirm-game-name">{confirmGame()!.title}</p>
+            <div class="confirm-actions">
+              <button
+                class="confirm-btn confirm-btn-yes"
+                onClick={() => executeLaunch(confirmGame()!)}
+              >
+                YES
+              </button>
+              <button class="confirm-btn confirm-btn-no" onClick={() => setConfirmGame(null)}>
+                BACK
+              </button>
+            </div>
+          </div>
+        </div>
       </Show>
 
+      {/* Error popup */}
       <Show when={launchError() !== null}>
         <div class="error-overlay" onClick={() => dismissError()}>
           <div class="error-dialog" onClick={(e) => e.stopPropagation()}>
@@ -218,6 +253,7 @@ function App() {
         </div>
       </Show>
 
+      {/* Update banner */}
       <Show when={updateInfo() !== null}>
         <div class="update-banner">
           <span class="update-text">Update available: v{updateInfo()!.version}</span>

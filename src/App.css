@@ -223,6 +223,35 @@ body {
   background: transparent;
 }
 
+/* ---- Two-column arcade layout (MK64 character-select style) ---- */
+.arcade-layout {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  z-index: 1;
+  /* bottom padding accounts for the fixed status bar */
+  padding-bottom: 2.2rem;
+}
+
+/* Left panel — game grid, 65% width */
+.grid-panel {
+  flex: 0 0 65%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 4px solid #111111;
+}
+
+/* Right panel — detail sidebar, 35% width */
+.detail-area {
+  flex: 0 0 35%;
+  min-width: 0;
+  overflow: hidden;
+}
+
 /* ---- Status bar ---- */
 .status-bar {
   position: fixed;
@@ -262,11 +291,11 @@ body {
 /* Game grid */
 .game-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   align-items: start;
   align-content: start;
   gap: 0.7rem;
-  padding: 1rem 1rem 3rem;
+  padding: 1rem;
   overflow-y: auto;
   flex: 1;
   position: relative;
@@ -289,7 +318,7 @@ body {
 .game-tile {
   position: relative;
   background: var(--surface);
-  /* --cup is set inline per tile; thick 3D-beveled frame */
+  /* Chiseled N64 frame — matches the confirm dialog bevel */
   border: 7px solid #111111;
   border-radius: 0;
   cursor: pointer;
