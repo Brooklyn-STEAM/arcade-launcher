@@ -11,26 +11,26 @@ interface GameDetailProps {
 export function GameDetail(props: GameDetailProps) {
   return (
     <div class="detail-overlay" onClick={() => props.onClose()}>
-      {/* Stop click propagation from the panel itself so clicking inside doesn't dismiss */}
       <div class="detail-panel" onClick={(e) => e.stopPropagation()}>
-        {/* Title header bar */}
-        <div class="detail-header">
-          <h2 class="detail-title">{props.game.title}</h2>
-        </div>
-
-        {/* Side-by-side body: thumbnail left, info right */}
         <div class="detail-body">
-          {/* Left: thumbnail */}
+          {/* Left: thumbnail + title strip below — mirrors the game tile layout */}
           <div class="detail-thumb-col">
-            <Show
-              when={props.game.thumbnailPath}
-              fallback={<span class="detail-thumb-placeholder">{props.game.title.charAt(0)}</span>}
-            >
-              <img
-                src={`http://localhost:8037/${props.game.thumbnailPath}`}
-                alt={props.game.title}
-              />
-            </Show>
+            <div class="detail-thumb-img">
+              <Show
+                when={props.game.thumbnailPath}
+                fallback={
+                  <span class="detail-thumb-placeholder">{props.game.title.charAt(0)}</span>
+                }
+              >
+                <img
+                  src={`http://localhost:8037/${props.game.thumbnailPath}`}
+                  alt={props.game.title}
+                />
+              </Show>
+            </div>
+            <div class="detail-title-strip">
+              <h2 class="detail-title">{props.game.title}</h2>
+            </div>
           </div>
 
           {/* Right: meta + description + buttons */}
@@ -46,7 +46,7 @@ export function GameDetail(props: GameDetailProps) {
 
             <div class="detail-actions">
               <button class="detail-btn detail-btn-launch" onClick={() => props.onLaunch()}>
-                START
+                PRESS START
               </button>
               <button class="detail-btn detail-btn-back" onClick={() => props.onClose()}>
                 BACK

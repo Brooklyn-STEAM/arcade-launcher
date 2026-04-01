@@ -155,6 +155,12 @@ function App() {
 
   return (
     <main class="shell">
+      {/* MK64 starfield background */}
+      <div class="starfield" aria-hidden="true">
+        <span class="stars-1" />
+        <span class="stars-2" />
+        <span class="stars-3" />
+      </div>
       <Show when={loading()}>
         <div class="center-message">
           <span class="loading-dots">Loading</span>

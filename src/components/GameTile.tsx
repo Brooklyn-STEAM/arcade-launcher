@@ -28,15 +28,12 @@ export function GameTile(props: GameTileProps) {
       tabIndex={-1}
       onClick={() => props.onClick()}
     >
-      {/* Red title band at top — NES box art style */}
-      <div class="tile-header">
-        <span class="tile-title-text">{props.game.title}</span>
-        <Show when={!props.game.enabled}>
-          <span class="tile-badge-off">OFF</span>
-        </Show>
-      </div>
+      {/* DISABLED badge — top-left */}
+      <Show when={!props.game.enabled}>
+        <span class="tile-badge-off">OFF</span>
+      </Show>
 
-      {/* Thumbnail */}
+      {/* Thumbnail — clean, no overlay */}
       <div class="tile-thumb">
         <Show
           when={props.game.thumbnailPath}
@@ -46,10 +43,9 @@ export function GameTile(props: GameTileProps) {
         </Show>
       </div>
 
-      {/* Footer strip — author + version */}
-      <div class="tile-footer">
-        <span class="tile-author">By: {props.game.author}</span>
-        <span class="tile-version">v{props.game.version}</span>
+      {/* Title strip below the thumbnail */}
+      <div class="tile-info">
+        <span class="tile-title-text">{props.game.title}</span>
       </div>
     </div>
   )
